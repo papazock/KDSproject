@@ -1,85 +1,62 @@
-//
-// Created by chris on 4/3/2016.
-//
-
+#include "mygenerator.h"
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
-typedef struct{
-    float x;
-    float y;
-    float z;
-}Point;
-
-char *filename;
-long coordinate_index;
-
-bool validate_args(int argc, char **argv);
-
-void write_to_file(int argc, char **argv);
-
-Point *read_from_file(char *filename,int *count);
+FILE *fp;
 
 
-Point *read_from_file(char *filename, int *pCount) {
-    FILE *fp = fopen(filename, "r");
-    int i = 0;
-    float x,y,z;
-    Point *points;
-    if (fp != NULL) {
-
-        fscanf (fp, "%d", &i);
-        points=(Point *)malloc(sizeof(Point)*i);
-        *pCount=i;
-        i=0;
-        while (!feof (fp))
-        {
-            fscanf (fp, "%f\t%f\t%f\n", &x,&y,&z);
-            points[i].x=x;
-            points[i].y=y;
-            points[i].z=z;
-            i++;
-        }
-        if(fp!=NULL){
-
-            fflush(fp);
-            fclose (fp);
-        }
-
-        return points;
-    } else {
-        perror("Error");
-    }
-    return NULL;
-
+int main(int argc, char **argv) {
+    validate_args_for_generator(argc, argv);
+    printf("\n*****Start creating file: %s*****\n", filename);
+    write_to_file(coordinate_index, filename);
+    printf("\n*****File %s successfully created!*****\n", filename);
+    OpenFileAndGetPointCount(filename);
+    return 0;
 }
 
-void write_to_file(int argc, char **argv) {
-    filename=(char *)malloc(sizeof(char)*25);
-    if (validate_args(argc, argv)) {
-        strcpy(filename, argv[1]);
-        coordinate_index = strtol(argv[2], (char **) NULL, 10);
-    }
+
+
+
+
+void write_to_file(long k, char *f) {
     int utime;
     long int ltime;
     int i;
+    int hasToWrite = 0;
 
     ltime = time(NULL);
     utime = (unsigned int) ltime / 2;
     srand(utime);
+    int tenPercent = 0;
+    float block[BLOCK_SIZE * OBJ_SIZE];
 
-    FILE *fp = fopen(filename, "w");
+
+    FILE *fp = fopen(f, "wb");
     if (fp != NULL) {
-        fprintf(fp, "%ld\n", coordinate_index);
-        for (i = 0; i < coordinate_index; i++) {
-            float x = (float) 34 * rand() / (RAND_MAX - 1);
-            float y = (float) 34 * rand() / (RAND_MAX - 1);
-            float z = (float) 34 * rand() / (RAND_MAX - 1);
-            fprintf(fp, "%f\t%f\t%f\n", x, y, z);
+        fwrite(&k, sizeof(long), 1, fp);
+        for (i = 0; i < k * OBJ_SIZE; i++) {
+            if (i % (BLOCK_SIZE * OBJ_SIZE) == 0 && i != 0) {
+                fwrite(block, sizeof(float), BLOCK_SIZE * OBJ_SIZE, fp);
+                printf("\t**%.2f/100 created**\n", tenPercent / (1.0 * k / BLOCK_SIZE) * 100);
+                tenPercent++;
+                memset(block, 0, sizeof(block));
+                hasToWrite = 0;
+            }
+
+            block[i % (BLOCK_SIZE * OBJ_SIZE)] = (float) 34 * rand() / (RAND_MAX - 1);
+            if (i != k * OBJ_SIZE - 1) {
+                hasToWrite = 1;
+            }
+            //printf("%f\n",block[i%(BLOCK_SIZE*OBJ_SIZE)]);
+
+
         }
+        if (hasToWrite == 1) {
+            fwrite(block, sizeof(float), BLOCK_SIZE * OBJ_SIZE, fp);
+        }
+        printf("\t**100.0/100 created**\n");
         fflush(fp);
         fclose(fp);
     } else {
@@ -87,28 +64,38 @@ void write_to_file(int argc, char **argv) {
     }
 }
 
-bool validate_args(int argc, char **argv) {
+void validate_args_for_generator(int argc, char **argv) {
     if (argc != 3) {
-        printf("\nProgram needs 2 arguments. arg1: #data_Points, arg2: output_file_name\nargs set to default\n");
-        strcpy(filename, "dataPoints.txt");
-        coordinate_index = 10000;
-        return false;
+        printf("\nProgram needs 2 arguments. arg1: #data_Points, arg2: output_file_name\nargs set to defaults\n");
+        strcpy(filename, "dataPoints.bin");
+        coordinate_index = 1000000;
+        return;
     } else {
-        bool temp = true;
-        if (strtol(argv[2], (char **) NULL, 10) <= 0) {
-            printf("\n #data_Points must be >0, set to default: 10000\n");
-            coordinate_index = 10000;
-            temp = false;
-            //strcpy(filename, argv[2]);
-        }
-        if (strcmp(argv[1], " ")==0) {
-            printf("\n file name must not be empty, set to default: dataPoints.txt\n");
-            //strcpy(filename , "dataPoints.txt");
-            if (!temp) {
-                coordinate_index = 10000;
-            }
-            temp = false;
-        }
-        return temp;
+        coordinate_index = strtol(argv[1], (char **) NULL, 10);
+        strcpy(filename, argv[2]);
+    }
+    return;
+}
+
+long OpenFileAndGetPointCount(char* filename){
+    FILE *fp = fopen(filename, "rb");
+    long pCount;
+    if (fp != NULL) {
+        fread(&pCount, sizeof(long), 1, fp);
+        float block[BLOCK_SIZE * OBJ_SIZE];
+        printf("%ld\n", pCount);
+    }
+    return pCount;
+}
+void getNextBlock(float *block) {
+    if (fp != NULL) {
+        fread(block, sizeof(float), BLOCK_SIZE * OBJ_SIZE, fp);
+    }
+}
+void CloseFile() {
+    if (fp != NULL) {
+
+        fflush(fp);
+        fclose(fp);
     }
 }
