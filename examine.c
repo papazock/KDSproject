@@ -14,7 +14,7 @@
 
 struct timespec start, end;
 int arg1, arg2, arg4, arg5;
-//arg1: max Number of Colizions, arg2: max execution time, arg4: number of Threads, arg5: number of proccessors
+    //arg1: max Number of Colizions, arg2: max execution time, arg4: number of Threads, arg5: number of proccessors
 char arg3[30];
 //arg3: points file
 const char invalid_number_of_args[] = "\n**********invalid number of Arguments**********\n";
@@ -93,8 +93,9 @@ void doJob(int rank, int worldSize) {
     int BlockSize = worldSize * POINTS_PER_PROCCESSOR;
     int ActualLocalBlockSize = POINTS_PER_PROCCESSOR * OBJ_SIZE;
     int globalCount[worldSize];
-    int i = 0;
+    int i = 0, k=0, z=0;
     int localCount = 0;
+    int ThreadCount=0;
     float *block = malloc(sizeof(float) * BlockSize * OBJ_SIZE);
     float *localBlock = malloc(sizeof(float) * ActualLocalBlockSize);
     float *BlockRemaing=NULL;
@@ -112,13 +113,12 @@ void doJob(int rank, int worldSize) {
     MPI_Bcast(&pCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 
-    for (int k = 0; k < nBlocks; k++) {
+    for (k = 0; k < nBlocks; k++) {
 
         if (rank == 0) {
-            printf("\nBlock %d ", k);
+            printf("\nBlock %d from %d", k+1,nBlocks);
             getNextBlock(block, BlockSize);
-            printf("\nBlock %d ", k);
-
+           // printf("\nBlock %d ", k);
         }
         if (k == nBlocks - 1) {
             remaining =(int) (pCount - BlockSize * (nBlocks - 1));
@@ -130,11 +130,11 @@ void doJob(int rank, int worldSize) {
                 ActualLocalBlockSize = (BlockSize / worldSize) * OBJ_SIZE;
                 //printf("BlockSize:%d\n",BlockSize);
                 if (rank == 0) {
-                    printf("\nremaining: %d\n", BlockSize);
+                    //printf("\nremaining: %d\n", BlockSize);
                     float *tempBlock = floatdup(block, (size_t) BlockSize * OBJ_SIZE);
                     //  printf("size of temp %d",sizeof(tempBlock));
                     BlockRemaing = malloc(remaining * OBJ_SIZE * sizeof(float));
-                    for (int z = 0; z < remaining; z++) {
+                    for (z = 0; z < remaining; z++) {
                         BlockRemaing[z] = block[BlockSize * OBJ_SIZE + z];
                     }
                     free(block);
@@ -154,18 +154,19 @@ void doJob(int rank, int worldSize) {
 
         MPI_Scatter(block, ActualLocalBlockSize, MPI_FLOAT, localBlock, ActualLocalBlockSize, MPI_FLOAT, 0,
                     MPI_COMM_WORLD);
+    ThreadCount=0;
 
 #pragma omp parallel
         {
-            //printf("rank: %d Thread num: %d\n",rank,omp_get_thread_num());
-#pragma omp  for reduction(+:localCount)
+          //  printf("rank: %d num Threads: %d\n",rank,omp_get_num_threads());
+#pragma omp  for reduction(+:ThreadCount)
             for (i = 0; i < ActualLocalBlockSize; i = i + 3)
                 if (checkColizion(&localBlock[i])) {
-                    localCount++;
+                    ThreadCount++;
                     // printf("rank: %d %f\n", rank, localBlock[i]);
                 }
         }
-
+        localCount=localCount+ThreadCount;
         MPI_Gather(&localCount, 1, MPI_INT, globalCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
         if (rank == 0) {
             int totalCount = 0;

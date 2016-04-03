@@ -2,12 +2,11 @@ HEADERS = mygenerator.h
 GENERATOR_ARGS= 15000000 dataPoints
 APP_ARGS= -1 -1 dataPoints -1 -1
 COMPILER= mpicc
-INCLUDES= /home/chris/openmpi/include
 CFLAGS=-std=c++11 -w -Wall
-OPENMP_ARGS= --bynode -x OMP_NUM_THREADS=4
-OPENMPI_ARG= -np 4
+OPENMP_ARGS= --bynode -x OMP_NUM_THREADS=24
+OPENMPI_ARG= -np 16
 
-default: generate
+default: all
 
 
 mygenerator.o: mygenerator.c $(HEADERS)
