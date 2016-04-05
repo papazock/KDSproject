@@ -8,7 +8,7 @@
 
 #define MIN 12
 #define MAX 30
-#define MAX_BLOCK_SIZE 1000
+#define MAX_BLOCK_SIZE 2000000
 #define OBJ_SIZE 3
 #define POINTS_PER_PROCCESSOR 500000
 
@@ -126,7 +126,7 @@ void doJob(int rank, int worldSize) {
                 BlockSize = remaining - (remaining % worldSize);
                 remaining = remaining % worldSize;
                 //printf("\nremaining: %d", BlockSize + remaining);
-                MPI_Bcast(&BlockSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+               // MPI_Bcast(&BlockSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
                 ActualLocalBlockSize = (BlockSize / worldSize) * OBJ_SIZE;
                 //printf("BlockSize:%d\n",BlockSize);
                 if (rank == 0) {
@@ -144,8 +144,6 @@ void doJob(int rank, int worldSize) {
                 localBlock = realloc(localBlock, ActualLocalBlockSize * sizeof(float));
                 //printf("\n%d DONE\n", rank);
                 //printf("rank: %d,Blocksize: %d, block-size: %d\n", rank, BlockSize, sizeof(block));
-                MPI_Barrier(MPI_COMM_WORLD);
-
             }
             else {
                 remaining = 0;
